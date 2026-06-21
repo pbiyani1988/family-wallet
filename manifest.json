@@ -2,7 +2,7 @@
   "name": "Family Wallet",
   "short_name": "Family Wallet",
   "description": "Track and categorize your family's monthly expenses",
-  "start_url": "/",
+  "start_url": "/family-wallet/",
   "display": "standalone",
   "background_color": "#4F46E5",
   "theme_color": "#4F46E5",
