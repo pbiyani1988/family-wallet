@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Family Wallet" />
+  <meta name="theme-color" content="#4F46E5" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>Family Wallet</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F7F5F2; overscroll-behavior: none; }
+    :root {
+      --accent: #4F46E5; --accent-light: #EEF2FF; --ink: #1A1A2E; --muted: #6B7280;
+      --success: #059669; --warning: #D97706; --danger: #DC2626; --border: #E5E7EB;
+      --card: #FFFFFF; --bg: #F7F5F2;
+      --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* LAYOUT */
+    #app { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative; }
+    .header { background: var(--accent); color: #fff; padding: calc(12px + var(--safe-top)) 20px 14px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; }
+    .header-left .eyebrow { font-size: 10px; opacity: 0.7; letter-spacing: 1.5px; text-transform: uppercase; }
+    .header-left .title { font-size: 20px; font-weight: 800; }
+    .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: flex; z-index: 100; padding-bottom: var(--safe-bottom); }
+    .nav-btn { flex: 1; background: none; border: none; padding: 10px 0 6px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .nav-btn svg { width: 22px; height: 22px; }
+    .nav-btn span { font-size: 10px; font-weight: 500; }
+    .nav-btn.active svg { stroke: var(--accent); }
+    .nav-btn.active span { color: var(--accent); font-weight: 700; }
+    .nav-btn:not(.active) svg { stroke: var(--muted); }
+    .nav-btn:not(.active) span { color: var(--muted); }
+    .page { padding: 16px 16px calc(80px + var(--safe-bottom)); display: none; }
+    .page.active { display: block; }
+
+    /* CARDS */
+    .card { background: var(--card); border-radius: 16px; padding: 16px; box-shadow: 0 1px 6px rgba(0,0,0,0.06); margin-bottom: 12px; }
+
+    /* ALERT BANNER */
+    #alert-banner { background: #FEF2F2; border-bottom: 2px solid var(--danger); padding: 10px 20px; display: none; }
+    .alert-item { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; color: var(--ink); }
+
+    /* SUMMARY GRID */
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .stat-value { font-size: 26px; font-weight: 800; line-height: 1; }
+    .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .progress-bar { background: var(--border); border-radius: 4px; height: 5px; margin-top: 10px; }
+    .progress-fill { border-radius: 4px; height: 5px; transition: width 0.5s ease; }
+
+    /* CATEGORY BARS */
+    .cat-row { margin-bottom: 14px; }
+    .cat-row-header { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+    .cat-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+    .cat-name { font-weight: 500; color: var(--ink); display: flex; align-items: center; }
+    .cat-amount { color: var(--muted); }
+    .cat-amount.over { color: var(--danger); font-weight: 700; }
+
+    /* UPLOAD PAGE */
+    .upload-zone { text-align: center; padding: 40px 20px; }
+    .upload-icon { width: 64px; height: 64px; background: var(--accent-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .upload-icon svg { width: 28px; height: 28px; stroke: var(--accent); }
+    .upload-btn-label { display: block; background: var(--accent); color: #fff; border-radius: 14px; padding: 16px 24px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 20px; }
+    .upload-btn-label:active { opacity: 0.85; }
+    .upload-msg { margin-top: 14px; padding: 12px 16px; border-radius: 10px; font-size: 13px; }
+    .upload-msg.info { background: var(--accent-light); color: var(--accent); }
+    .upload-msg.success { background: #D1FAE5; color: var(--success); }
+    .upload-msg.error { background: #FEE2E2; color: var(--danger); }
+    .bank-hint { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .bank-hint:last-child { border-bottom: none; }
+    .bank-hint b { display: block; color: var(--ink); margin-bottom: 2px; }
+
+    /* TRANSACTIONS */
+    .tx-item { background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-name { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tx-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .tx-amount { font-size: 14px; font-weight: 700; color: var(--ink); flex-shrink: 0; }
+    .tx-amount.credit { color: var(--success); }
+
+    /* SETTINGS */
+    .budget-row { display: flex; align-items: center; gap: 10px; }
+    .budget-edit-input { width: 80px; border: 1.5px solid var(--accent); border-radius: 8px; padding: 6px 10px; font-size: 14px; font-weight: 600; }
+    .btn-sm { border: none; border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-gray { background: var(--border); color: var(--ink); }
+    .btn-danger { background: var(--danger); color: #fff; border: none; border-radius: 10px; padding: 12px 20px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+    .reminder-card { background: var(--accent-light); border: 1.5px solid var(--accent); }
+    .reminder-card .reminder-row { display: flex; align-items: center; gap: 12px; }
+    .send-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+    .send-btn:active { opacity: 0.8; }
+    #month-picker { background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 8px; padding: 5px 8px; font-size: 12px; }
+
+    /* CHART */
+    canvas { max-width: 100%; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .section-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 12px; }
+    .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+
+    /* SYNC PAGE */
+    .sync-option { display: flex; align-items: flex-start; gap: 14px; }
+    .sync-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sync-icon svg { width: 22px; height: 22px; fill: none; }
+    .sync-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 3px; }
+    .sync-desc { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+    .sync-btn { border: none; border-radius: 10px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .sync-btn-accent { background: var(--accent); color: #fff; }
+    .sync-btn-green { background: #059669; color: #fff; }
+    .sync-btn-orange { background: #D97706; color: #fff; }
+    .sync-btn:active { opacity: 0.8; }
+    .sync-status { font-size: 12px; margin-top: 8px; padding: 6px 10px; border-radius: 8px; display: none; }
+    .sync-status.success { background: #D1FAE5; color: #059669; display: block; }
+    .sync-status.error { background: #FEE2E2; color: var(--danger); display: block; }
+    .sync-status.info { background: var(--accent-light); color: var(--accent); display: block; }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="eyebrow">Family Wallet</div>
+      <div class="title" id="header-month">June 2026</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div id="alert-badge" style="display:none;background:#DC2626;color:#fff;border-radius:20px;padding:2px 10px;font-size:12px;font-weight:700;"></div>
+      <input type="month" id="month-picker" />
+    </div>
+  </div>
+
+  <!-- ALERT BANNER -->
+  <div id="alert-banner"></div>
+
+  <!-- DASHBOARD PAGE -->
+  <div class="page active" id="page-dashboard">
+    <div class="summary-grid">
+      <div class="card">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-value" id="total-spent" style="color:var(--ink)">$0</div>
+        <div class="stat-sub" id="total-budget-label">of $0 budget</div>
+        <div class="progress-bar"><div class="progress-fill" id="spent-bar" style="background:var(--accent);width:0%"></div></div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-value" id="total-remaining" style="color:var(--success)">$0</div>
+        <div class="stat-sub" id="remaining-label">left this month</div>
+        <div class="stat-sub" id="tx-count" style="margin-top:6px;">0 transactions</div>
+      </div>
+    </div>
+
+    <!-- Pie Chart -->
+    <div class="card" id="chart-card" style="display:none;">
+      <div class="section-title">Spending by Category</div>
+      <canvas id="pie-chart" height="200"></canvas>
+      <div class="legend" id="pie-legend"></div>
+    </div>
+
+    <!-- Budget vs Spent -->
+    <div class="card" id="bar-card" style="display:none;">
+      <div class="section-title">Budget vs Spent</div>
+      <canvas id="bar-chart" height="180"></canvas>
+    </div>
+
+    <!-- Category breakdown -->
+    <div class="card">
+      <div class="section-title">Category Breakdown</div>
+      <div id="cat-breakdown"></div>
+    </div>
+
+    <!-- Sunday Reminder -->
+    <div class="card reminder-card">
+      <div class="reminder-row">
+        <svg style="width:22px;height:22px;stroke:var(--accent);fill:none;flex-shrink:0;" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;color:var(--accent);">Sunday Reminder</div>
+          <div style="font-size:11px;color:var(--muted);">Send weekly upload reminder via Gmail</div>
+        </div>
+        <button class="send-btn" id="reminder-btn" onclick="sendReminder()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPLOAD PAGE -->
+  <div class="page" id="page-upload">
+    <div class="card upload-zone">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      </div>
+      <div style="font-size:17px;font-weight:800;color:var(--ink);margin-bottom:8px;">Upload Bank Statement</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;">Upload a PDF from any bank or credit card. Claude reads and categorizes every transaction automatically.</div>
+      <label class="upload-btn-label" id="upload-label">
+        Choose PDF File
+        <input type="file" id="file-input" accept=".pdf,.csv,.txt" style="display:none;" onchange="handleFile(event)" />
+      </label>
+      <div id="upload-msg" style="display:none;" class="upload-msg"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">How to download your statement</div>
+      <div class="bank-hint"><b>Chase</b>Login → Statements → Download PDF</div>
+      <div class="bank-hint"><b>Citi</b>Login → Statements & Documents → View/Download</div>
+      <div class="bank-hint"><b>American Express</b>Login → Statements & Activity → View PDF</div>
+      <div class="bank-hint"><b>Capital One</b>Login → View Statements → Download PDF</div>
+      <div class="bank-hint"><b>Bank of America</b>Login → Statements → View statement PDF</div>
+      <div class="bank-hint"><b>Wells Fargo</b>Login → Accounts → Statements → Download</div>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS PAGE -->
+  <div class="page" id="page-transactions">
+    <div id="tx-count-header" style="font-size:13px;color:var(--muted);margin-bottom:12px;font-weight:600;"></div>
+    <div id="tx-list"></div>
+  </div>
+
+  <!-- SETTINGS PAGE -->
+  <div class="page" id="page-settings">
+    <div style="font-size:14px;font-weight:700;color:var(--ink);margin-bottom:12px;">Monthly Budget Limits</div>
+    <div id="budget-list"></div>
+    <div class="card" style="background:#FFF7ED;border:1.5px solid #FED7AA;margin-top:8px;">
+      <div style="font-size:13px;font-weight:700;color:#C2410C;margin-bottom:6px;">⚠ Clear All Data</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Remove all imported transactions for a fresh start.</div>
+      <button class="btn-danger" onclick="clearData()">Clear All Transactions</button>
+    </div>
+  </div>
+
+  <!-- SYNC PAGE -->
+  <div class="page" id="page-sync">
+
+    <!-- Export / Import -->
+    <div class="card">
+      <div class="sync-option">
+        <div class="sync-icon" style="background:#EEF2FF;">
+          <svg viewBox="0 0 24 24" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div class="sync-title">Export Data</div>
+          <div class="sync-desc">Download all your transactions as a file. Send it to your husband via WhatsApp, iMessage, or email — he imports it on his phone.</div>
+          <button class="sync-btn sync-btn-accent" onclick="exportData()">Export & Share</button>
+          <div id="export-status" class="sync-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sync-option">
+        <div class="sync-icon" style="background:#EEF2FF;">
+          <svg viewBox="0 0 24 24" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div class="sync-title">Import Data</div>
+          <div class="sync-desc">Received a data file from your husband? Import it here to merge his transactions with yours.</div>
+          <label class="sync-btn sync-btn-accent" style="display:inline-block;cursor:pointer;">
+            Import File
+            <input type="file" id="import-input" accept=".json" style="display:none;" onchange="importData(event)" />
+          </label>
+          <div id="import-status" class="sync-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email Summary -->
+    <div class="card">
+      <div class="sync-option">
+        <div class="sync-icon" style="background:#D1FAE5;">
+          <svg viewBox="0 0 24 24" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div class="sync-title">Email Monthly Summary</div>
+          <div class="sync-desc">Send a full spending summary to both you and your husband via Gmail right now.</div>
+          <input id="husband-email" type="email" placeholder="Husband's email address" style="width:100%;border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:10px;"/>
+          <button class="sync-btn sync-btn-green" onclick="emailSummary()">Send Summary Email</button>
+          <div id="email-status" class="sync-status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Google Sheets -->
+    <div class="card" style="background:#FFFBEB;border:1.5px solid #FDE68A;">
+      <div class="sync-option">
+        <div class="sync-icon" style="background:#FEF3C7;">
+          <svg viewBox="0 0 24 24" stroke="#D97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+        </div>
+        <div style="flex:1;">
+          <div class="sync-title">Export to Google Sheets</div>
+          <div class="sync-desc">Download a CSV file and upload it to Google Sheets — share the sheet with your husband so you both have a live view.</div>
+          <button class="sync-btn sync-btn-orange" onclick="exportCSV()">Download CSV</button>
+          <div id="csv-status" class="sync-status"></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">After downloading: open Google Sheets → New → Import → upload the CSV → share with husband's email.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <button class="nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-btn" id="nav-upload" onclick="switchTab('upload')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+      <span>Upload</span>
+    </button>
+    <button class="nav-btn" id="nav-transactions" onclick="switchTab('transactions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span>Transactions</span>
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>Budgets</span>
+    </button>
+    <button class="nav-btn" id="nav-sync" onclick="switchTab('sync')">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg>
+      <span>Sync</span>
+    </button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────────────────────
+const COLORS = {
+  "Restaurants / Dining": "#F97316",
+  "Grocery": "#22C55E",
+  "Shopping / Amazon": "#8B5CF6",
+  "Kids Activities": "#EC4899",
+  "Travel": "#06B6D4",
+  "Gas / Transport": "#EAB308",
+  "Subscriptions": "#6366F1",
+  "Healthcare": "#14B8A6",
+  "Other": "#9CA3AF"
+};
+const CATEGORIES = Object.keys(COLORS);
+const DEFAULT_BUDGETS = {
+  "Restaurants / Dining": 400, "Grocery": 600, "Shopping / Amazon": 300,
+  "Kids Activities": 200, "Travel": 500, "Gas / Transport": 150,
+  "Subscriptions": 100, "Healthcare": 200
+};
+const SYSTEM_PROMPT = `You are a family expense categorizer. Parse bank/credit card statement text and extract all transactions.
+Return a JSON array where each object has:
+- date: string (MM/DD/YYYY)
+- description: string (clean merchant name)
+- amount: number (positive = expense, negative = refund/credit)
+- category: exactly one of: "Restaurants / Dining", "Grocery", "Shopping / Amazon", "Kids Activities", "Travel", "Gas / Transport", "Subscriptions", "Healthcare", "Other"
+
+Rules:
+- Restaurants, cafes, fast food, coffee → "Restaurants / Dining"
+- Supermarkets, grocery stores → "Grocery"
+- Amazon, retail, online shopping, clothing → "Shopping / Amazon"
+- School, tutoring, sports, camps, toys → "Kids Activities"
+- Airlines, hotels, Airbnb, car rentals → "Travel"
+- Gas stations, parking, transit, Uber/Lyft → "Gas / Transport"
+- Netflix, Spotify, gym, software subscriptions → "Subscriptions"
+- Pharmacy, doctor, hospital, dental → "Healthcare"
+- Anything else → "Other"
+
+Return ONLY valid JSON array, no markdown, no explanation.`;
+
+// ── STATE ────────────────────────────────────────────────────────
+let transactions = [];
+let budgets = { ...DEFAULT_BUDGETS };
+let currentMonth = (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`; })();
+let editingBudget = null;
+
+// ── STORAGE ──────────────────────────────────────────────────────
+const save = async (k, v) => { try { await window.storage.set(k, JSON.stringify(v)); } catch(e) { localStorage.setItem(k, JSON.stringify(v)); } };
+const load = async (k, d) => { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : d; } catch(e) { const r = localStorage.getItem(k); return r ? JSON.parse(r) : d; } };
+
+// ── INIT ─────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  transactions = await load('transactions', []);
+  budgets = await load('budgets', DEFAULT_BUDGETS);
+  document.getElementById('month-picker').value = currentMonth;
+  document.getElementById('month-picker').addEventListener('change', e => { currentMonth = e.target.value; render(); });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+  render();
+});
+
+// ── MONTHLY FILTER ───────────────────────────────────────────────
+function monthlyTx() {
+  return transactions.filter(tx => {
+    if (!tx.date) return false;
+    const p = tx.date.split('/');
+    if (p.length === 3) {
+      const yr = p[2].length === 4 ? p[2] : `20${p[2]}`;
+      return `${yr}-${p[0].padStart(2,'0')}` === currentMonth;
+    }
+    return false;
+  });
+}
+
+function categoryTotals() {
+  return monthlyTx().reduce((acc, tx) => {
+    if (tx.amount > 0) acc[tx.category] = (acc[tx.category]||0) + tx.amount;
+    return acc;
+  }, {});
+}
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render() {
+  const txs = monthlyTx();
+  const totals = categoryTotals();
+  const totalBudget = Object.values(budgets).reduce((s,v)=>s+v,0);
+  const totalSpent = Object.values(totals).reduce((s,v)=>s+v,0);
+  const remaining = totalBudget - totalSpent;
+
+  // Header month label
+  const [yr, mo] = currentMonth.split('-');
+  document.getElementById('header-month').textContent = new Date(+yr, +mo-1, 1).toLocaleString('default',{month:'long',year:'numeric'});
+
+  // Summary cards
+  document.getElementById('total-spent').textContent = `$${totalSpent.toFixed(0)}`;
+  document.getElementById('total-spent').style.color = totalSpent > totalBudget ? 'var(--danger)' : 'var(--ink)';
+  document.getElementById('total-budget-label').textContent = `of $${totalBudget} budget`;
+  document.getElementById('spent-bar').style.width = `${Math.min((totalSpent/totalBudget)*100,100)}%`;
+  document.getElementById('spent-bar').style.background = totalSpent > totalBudget ? 'var(--danger)' : 'var(--accent)';
+  document.getElementById('total-remaining').textContent = `$${Math.abs(remaining).toFixed(0)}`;
+  document.getElementById('total-remaining').style.color = remaining < 0 ? 'var(--danger)' : 'var(--success)';
+  document.getElementById('remaining-label').textContent = remaining < 0 ? 'over budget' : 'left this month';
+  document.getElementById('tx-count').textContent = `${txs.length} transactions`;
+
+  // Alerts
+  renderAlerts(totals);
+
+  // Category breakdown
+  renderCatBreakdown(totals);
+
+  // Charts
+  if (Object.keys(totals).length > 0) {
+    document.getElementById('chart-card').style.display = 'block';
+    document.getElementById('bar-card').style.display = 'block';
+    drawPie(totals);
+    drawBar(totals);
+  } else {
+    document.getElementById('chart-card').style.display = 'none';
+    document.getElementById('bar-card').style.display = 'none';
+  }
+
+  // Transactions list
+  renderTransactions(txs);
+
+  // Budget settings
+  renderBudgets();
+}
+
+function renderAlerts(totals) {
+  const banner = document.getElementById('alert-banner');
+  const badge = document.getElementById('alert-badge');
+  const alerts = [];
+  Object.entries(budgets).forEach(([cat, limit]) => {
+    const spent = totals[cat]||0;
+    const pct = (spent/limit)*100;
+    if (pct >= 80) alerts.push({cat, spent, limit, pct, over: pct>=100});
+  });
+  if (alerts.length === 0) { banner.style.display='none'; badge.style.display='none'; return; }
+  badge.style.display='block';
+  badge.textContent = `${alerts.length} alert${alerts.length>1?'s':''}`;
+  banner.style.display='block';
+  banner.innerHTML = alerts.map(a => `
+    <div class="alert-item">
+      <span style="color:${a.over?'var(--danger)':'var(--warning)'}">⚠</span>
+      <span><b>${a.cat}</b>: $${a.spent.toFixed(0)} / $${a.limit} — ${a.over ? 'OVER BUDGET!' : `${a.pct.toFixed(0)}% used`}</span>
+    </div>`).join('');
+}
+
+function renderCatBreakdown(totals) {
+  const el = document.getElementById('cat-breakdown');
+  el.innerHTML = Object.entries(budgets).map(([cat, limit]) => {
+    const spent = totals[cat]||0;
+    const pct = Math.min((spent/limit)*100,100);
+    const over = spent > limit;
+    const color = over ? 'var(--danger)' : pct>80 ? 'var(--warning)' : COLORS[cat];
+    return `<div class="cat-row">
+      <div class="cat-row-header">
+        <div class="cat-name"><span class="cat-dot" style="background:${COLORS[cat]}"></span>${cat}</div>
+        <div class="cat-amount ${over?'over':''}">$${spent.toFixed(0)} / $${limit}</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="background:${color};width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderTransactions(txs) {
+  const sorted = [...txs].sort((a,b) => new Date(b.date)-new Date(a.date));
+  document.getElementById('tx-count-header').textContent = `${txs.length} transactions this month`;
+  const list = document.getElementById('tx-list');
+  if (txs.length === 0) {
+    list.innerHTML = '<div class="empty-state">No transactions yet.<br>Upload a statement to get started.</div>';
+    return;
+  }
+  list.innerHTML = sorted.map(tx => `
+    <div class="tx-item">
+      <span class="cat-dot" style="background:${COLORS[tx.category]||COLORS['Other']}"></span>
+      <div class="tx-info">
+        <div class="tx-name">${tx.description}</div>
+        <div class="tx-meta">${tx.date} · ${tx.category}</div>
+      </div>
+      <div class="tx-amount ${tx.amount<0?'credit':''}">${tx.amount<0?'-':''}$${Math.abs(tx.amount).toFixed(2)}</div>
+    </div>`).join('');
+}
+
+function renderBudgets() {
+  document.getElementById('budget-list').innerHTML = Object.entries(budgets).map(([cat, limit]) => `
+    <div class="card" style="margin-bottom:8px;">
+      <div class="budget-row">
+        <span class="cat-dot" style="background:${COLORS[cat]}"></span>
+        <div style="flex:1;font-size:13px;font-weight:500;color:var(--ink);">${cat}</div>
+        ${editingBudget===cat ? `
+          <input class="budget-edit-input" id="edit-${cat.replace(/\//g,'-').replace(/ /g,'_')}" type="number" value="${limit}" />
+          <button class="btn-sm btn-accent" onclick="saveBudget('${cat}')">Save</button>
+          <button class="btn-sm btn-gray" onclick="editingBudget=null;renderBudgets()">✕</button>
+        ` : `
+          <span style="font-size:15px;font-weight:800;color:var(--ink);margin-right:8px;">$${limit}</span>
+          <button class="btn-sm btn-accent" onclick="editingBudget='${cat}';renderBudgets()">Edit</button>
+        `}
+      </div>
+    </div>`).join('');
+}
+
+function saveBudget(cat) {
+  const id = `edit-${cat.replace(/\//g,'-').replace(/ /g,'_')}`;
+  const val = document.getElementById(id)?.value;
+  if (val) { budgets[cat] = Number(val); save('budgets', budgets); }
+  editingBudget = null;
+  render();
+}
+
+// ── CHARTS ───────────────────────────────────────────────────────
+function drawPie(totals) {
+  const canvas = document.getElementById('pie-chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = 200 * dpr;
+  ctx.scale(dpr, dpr);
+  const W = canvas.offsetWidth, H = 200;
+  const entries = Object.entries(totals).filter(([,v])=>v>0);
+  const total = entries.reduce((s,[,v])=>s+v,0);
+  let angle = -Math.PI/2;
+  const cx = W/2, cy = H/2, r = Math.min(W,H)/2 - 20, inner = r*0.55;
+  ctx.clearRect(0,0,W,H);
+  entries.forEach(([cat, val]) => {
+    const slice = (val/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,angle,angle+slice);
+    ctx.closePath();
+    ctx.fillStyle = COLORS[cat]||COLORS['Other'];
+    ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    angle += slice;
+  });
+  // Donut hole
+  ctx.beginPath(); ctx.arc(cx,cy,inner,0,Math.PI*2);
+  ctx.fillStyle='#fff'; ctx.fill();
+  // Center text
+  ctx.fillStyle='#1A1A2E'; ctx.textAlign='center'; ctx.font=`700 ${Math.round(r*0.22)}px -apple-system,sans-serif`;
+  ctx.fillText(`$${total.toFixed(0)}`,cx,cy+4);
+  ctx.font=`400 ${Math.round(r*0.13)}px -apple-system,sans-serif`;
+  ctx.fillStyle='#6B7280'; ctx.fillText('spent',cx,cy+18);
+
+  // Legend
+  const legend = document.getElementById('pie-legend');
+  legend.innerHTML = entries.map(([cat])=>`
+    <div class="legend-item"><span class="legend-dot" style="background:${COLORS[cat]||COLORS['Other']}"></span>${cat.split(' / ')[0].split(' ')[0]}</div>`).join('');
+}
+
+function drawBar(totals) {
+  const canvas = document.getElementById('bar-chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio||1;
+  canvas.width = canvas.offsetWidth * dpr;
+  canvas.height = 180 * dpr;
+  ctx.scale(dpr, dpr);
+  const W = canvas.offsetWidth, H = 180;
+  ctx.clearRect(0,0,W,H);
+  const cats = Object.keys(budgets);
+  const n = cats.length;
+  const padL=10, padR=10, padT=10, padB=30;
+  const chartW = W-padL-padR;
+  const chartH = H-padT-padB;
+  const maxVal = Math.max(...cats.map(c=>Math.max(budgets[c],totals[c]||0)),1);
+  const groupW = chartW/n;
+  const barW = Math.min(groupW*0.35, 16);
+  cats.forEach((cat,i) => {
+    const budget = budgets[cat];
+    const spent = totals[cat]||0;
+    const x = padL + i*groupW + groupW/2;
+    // Budget bar (light)
+    const bH = (budget/maxVal)*chartH;
+    ctx.fillStyle = '#EEF2FF';
+    ctx.strokeStyle = '#4F46E5';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(x-barW-1, padT+chartH-bH, barW, bH, [3,3,0,0]);
+    ctx.fill(); ctx.stroke();
+    // Spent bar
+    const sH = (spent/maxVal)*chartH;
+    ctx.fillStyle = COLORS[cat]||COLORS['Other'];
+    ctx.beginPath();
+    ctx.roundRect(x+1, padT+chartH-sH, barW, sH, [3,3,0,0]);
+    ctx.fill();
+    // Label
+    ctx.fillStyle = '#6B7280';
+    ctx.font = `500 9px -apple-system,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(cat.split(' ')[0].substring(0,6), x, H-8);
+  });
+}
+
+// ── UPLOAD ───────────────────────────────────────────────────────
+async function handleFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const label = document.getElementById('upload-label');
+  const msg = document.getElementById('upload-msg');
+  label.textContent = 'Reading file…';
+  showMsg('info', `Reading ${file.name}…`);
+
+  try {
+    let resultText = '';
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      const base64 = await toBase64(file);
+      showMsg('info', 'Claude is reading your PDF statement…');
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6', max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+            { type: 'text', text: 'Extract and categorize all transactions from this bank/credit card statement. Return only the JSON array.' }
+          ]}]
+        })
+      });
+      const data = await resp.json();
+      resultText = data.content?.find(b=>b.type==='text')?.text || '[]';
+    } else {
+      const text = await file.text();
+      showMsg('info', 'Claude is categorizing your transactions…');
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6', max_tokens: 1000,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: 'user', content: `Bank statement:\n\n${text}\n\nExtract and categorize all transactions. Return only the JSON array.` }]
+        })
+      });
+      const data = await resp.json();
+      resultText = data.content?.find(b=>b.type==='text')?.text || '[]';
+    }
+
+    const clean = resultText.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    // Deduplicate
+    const merged = [...transactions, ...parsed].filter((tx,i,arr)=>
+      arr.findIndex(t=>t.date===tx.date&&t.description===tx.description&&t.amount===tx.amount)===i
+    );
+    transactions = merged;
+    await save('transactions', merged);
+    showMsg('success', `✓ ${parsed.length} transactions imported and categorized!`);
+    render();
+    setTimeout(()=>switchTab('dashboard'),1500);
+  } catch(err) {
+    showMsg('error', `Could not parse file: ${err.message}`);
+  }
+  label.textContent = 'Choose PDF File';
+  e.target.value = '';
+}
+
+function toBase64(file) {
+  return new Promise((res,rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+function showMsg(type, text) {
+  const el = document.getElementById('upload-msg');
+  el.style.display='block';
+  el.className=`upload-msg ${type}`;
+  el.textContent=text;
+}
+
+// ── REMINDER ─────────────────────────────────────────────────────
+async function sendReminder() {
+  const btn = document.getElementById('reminder-btn');
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+  try {
+    await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 1000,
+        system: 'You are a helpful assistant. Use Gmail to send a friendly Sunday reminder email to the user to upload their bank statements to the Family Wallet expense tracker. The email should be warm, brief, and mention uploading PDFs from each credit card.',
+        messages: [{ role:'user', content:'Send the weekly Sunday statement upload reminder to my Gmail.' }],
+        mcp_servers: [{ type:'url', url:'https://gmailmcp.googleapis.com/mcp/v1', name:'gmail-mcp' }]
+      })
+    });
+    btn.textContent = 'Sent ✓';
+  } catch(e) {
+    btn.textContent = 'Failed';
+  }
+  setTimeout(()=>{ btn.textContent='Send'; btn.disabled=false; }, 3000);
+}
+
+// ── CLEAR DATA ───────────────────────────────────────────────────
+async function clearData() {
+  if (!confirm('Clear all transactions? This cannot be undone.')) return;
+  transactions = [];
+  await save('transactions', []);
+  render();
+}
+
+// ── SYNC: EXPORT JSON ─────────────────────────────────────────────
+function exportData() {
+  try {
+    const data = { transactions, budgets, exportedAt: new Date().toISOString(), version: 1 };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const month = currentMonth.replace('-','');
+    a.href = url; a.download = `family-wallet-${month}.json`; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('export-status', 'success', '✓ File downloaded! Share it via iMessage, WhatsApp, or email.');
+  } catch(e) {
+    setStatus('export-status', 'error', 'Export failed: ' + e.message);
+  }
+}
+
+// ── SYNC: IMPORT JSON ─────────────────────────────────────────────
+async function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data.transactions) throw new Error('Invalid file format');
+    // Merge & deduplicate
+    const merged = [...transactions, ...data.transactions].filter((tx, i, arr) =>
+      arr.findIndex(t => t.date===tx.date && t.description===tx.description && t.amount===tx.amount) === i
+    );
+    transactions = merged;
+    await save('transactions', merged);
+    // Optionally merge budgets
+    if (data.budgets) { budgets = { ...budgets, ...data.budgets }; await save('budgets', budgets); }
+    setStatus('import-status', 'success', `✓ Imported ${data.transactions.length} transactions and merged with yours!`);
+    render();
+  } catch(e) {
+    setStatus('import-status', 'error', 'Import failed: ' + e.message);
+  }
+  e.target.value = '';
+}
+
+// ── SYNC: EMAIL SUMMARY ───────────────────────────────────────────
+async function emailSummary() {
+  const husbandEmail = document.getElementById('husband-email').value.trim();
+  if (!husbandEmail) { setStatus('email-status', 'error', 'Please enter your husband\'s email address.'); return; }
+  setStatus('email-status', 'info', 'Generating and sending summary…');
+
+  const totals = categoryTotals();
+  const totalSpent = Object.values(totals).reduce((s,v)=>s+v,0);
+  const totalBudget = Object.values(budgets).reduce((s,v)=>s+v,0);
+  const [yr, mo] = currentMonth.split('-');
+  const monthName = new Date(+yr,+mo-1,1).toLocaleString('default',{month:'long',year:'numeric'});
+
+  const summaryLines = Object.entries(budgets).map(([cat, limit]) => {
+    const spent = totals[cat]||0;
+    const pct = ((spent/limit)*100).toFixed(0);
+    const flag = spent > limit ? '🔴 OVER' : spent/limit > 0.8 ? '🟡' : '🟢';
+    return `${flag} ${cat}: $${spent.toFixed(0)} / $${limit} (${pct}%)`;
+  }).join('\n');
+
+  try {
+    await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 1000,
+        system: `You are a family finance assistant. Use Gmail to send a monthly expense summary email.
+Send to: ${husbandEmail}
+Subject: Family Wallet — ${monthName} Expense Summary
+
+Email body should be friendly and include this data:
+Total Spent: $${totalSpent.toFixed(2)} of $${totalBudget} budget
+Remaining: $${(totalBudget-totalSpent).toFixed(2)}
+Transactions this month: ${monthlyTx().length}
+
+Category breakdown:
+${summaryLines}
+
+Keep it warm, clear, and actionable.`,
+        messages: [{ role: 'user', content: `Send the ${monthName} expense summary email to ${husbandEmail}.` }],
+        mcp_servers: [{ type: 'url', url: 'https://gmailmcp.googleapis.com/mcp/v1', name: 'gmail-mcp' }]
+      })
+    });
+    setStatus('email-status', 'success', `✓ Summary sent to ${husbandEmail}!`);
+  } catch(e) {
+    setStatus('email-status', 'error', 'Failed to send. Check your Gmail connection.');
+  }
+}
+
+// ── SYNC: EXPORT CSV ──────────────────────────────────────────────
+function exportCSV() {
+  try {
+    const rows = [['Date','Description','Amount','Category']];
+    monthlyTx().sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(tx => {
+      rows.push([tx.date, `"${tx.description.replace(/"/g,'""')}"`, tx.amount.toFixed(2), tx.category]);
+    });
+    const csv = rows.map(r=>r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `family-wallet-${currentMonth}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('csv-status', 'success', '✓ CSV downloaded! Import it into Google Sheets and share with your husband.');
+  } catch(e) {
+    setStatus('csv-status', 'error', 'Export failed: ' + e.message);
+  }
+}
+
+function setStatus(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = `sync-status ${type}`;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`page-${tab}`).classList.add('active');
+  document.getElementById(`nav-${tab}`).classList.add('active');
+  if (tab==='dashboard') render();
+}
+</script>
+</body>
+</html>
