@@ -1,5 +1,5 @@
 const CACHE = 'family-wallet-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+const ASSETS = ['/family-wallet/', '/family-wallet/index.html', '/family-wallet/manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
